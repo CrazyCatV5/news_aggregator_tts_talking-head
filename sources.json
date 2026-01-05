@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Vedomosti Economics",
+    "kind": "rss",
+    "url": "https://www.vedomosti.ru/rss/rubric/economics"
+  },
+  {
+    "name": "TASS RSS v2",
+    "kind": "rss",
+    "url": "https://tass.ru/rss/v2.xml"
+  },
+  {
+    "name": "RBC Export",
+    "kind": "rss",
+    "url": "https://rssexport.rbc.ru/rbcnews/news/"
+  },
+  {
+    "name": "RG/doc",
+    "kind": "html",
+    "url": "https://rg.ru/doc"
+  },
+  {
+    "name": "Forbes Russia",
+    "kind": "html",
+    "url": "https://www.forbes.ru/"
+  },
+  {
+    "name": "EastRussia",
+    "kind": "html",
+    "url": "https://www.eastrussia.ru/"
+  },
+  {
+    "name": "DVnovosti",
+    "kind": "html",
+    "url": "https://www.dvnovosti.ru/"
+  },
+  {
+    "name": "Kam24",
+    "kind": "html",
+    "url": "https://kam24.ru/"
+  }
+]

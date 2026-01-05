@@ -1,0 +1,46 @@
+name: news_bot
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports: ["6379:6379"]
+    restart: unless-stopped
+
+  api:
+    build: ./services/api
+    ports: ["8088:8088"]
+    environment:
+      DB_PATH: /data/app.db
+      SOURCES_PATH: /app/sources.json
+      USER_AGENT: dfo-news-aggregator/3.0
+      REQUEST_TIMEOUT: "25"
+      REDIS_URL: redis://redis:6379/0
+      FETCH_CONCURRENCY: "16"
+      ARTICLE_CONCURRENCY: "32"
+      DB_COMMIT_EVERY: "25"
+    volumes:
+      - ./sources.json:/app/sources.json:ro
+      - appdata:/data
+    depends_on: [redis]
+    restart: unless-stopped
+
+  worker:
+    build: ./services/api
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DB_PATH: /data/app.db
+      SOURCES_PATH: /app/sources.json
+      USER_AGENT: dfo-news-aggregator/3.0
+      REQUEST_TIMEOUT: "25"
+      REDIS_URL: redis://redis:6379/0
+      FETCH_CONCURRENCY: "16"
+      ARTICLE_CONCURRENCY: "32"
+      DB_COMMIT_EVERY: "25"
+    volumes:
+      - ./sources.json:/app/sources.json:ro
+      - appdata:/data
+    depends_on: [redis]
+    restart: unless-stopped
+
+volumes:
+  appdata:
