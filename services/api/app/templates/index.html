@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="api-base" content=""/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>DFO News Aggregator — Dashboard</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <h1>DFO Business News Aggregator</h1>
+
+  <div class="card">
+    <h3 style="margin:0 0 8px 0">UI log</h3>
+    <div class="mono" id="jslog" style="white-space:pre-wrap;color:#555"></div>
+  </div>
+
+  <!-- Full text modal (article stored in DB) -->
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal__backdrop" id="modalBackdrop" aria-label="Close"></div>
+    <div class="modal__panel" role="document">
+      <div class="modal__header">
+        <div class="modal__title" id="modalTitle">—</div>
+        <button class="modal__close" id="modalClose" title="Close" aria-label="Close">×</button>
+      </div>
+      <div class="modal__meta mono" id="modalMeta"></div>
+      <div class="modal__body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="tabs" aria-label="Sections">
+    <button class="tab-btn active" data-tab="dashboard" type="button">Dashboard</button>
+    <button class="tab-btn" data-tab="catalog" type="button">Catalog</button>
+    <button class="tab-btn" data-tab="llm" type="button">LLM Digest</button>
+    <button class="tab-btn" data-tab="digests" type="button">Daily Digests</button>
+    <button class="tab-btn" data-tab="tts" type="button">TTS</button>
+  </div>
+
+  {% include "partials/dashboard.html" %}
+  {% include "partials/catalog.html" %}
+  {% include "partials/llm.html" %}
+  {% include "partials/digests.html" %}
+  {% include "partials/tts.html" %}
+
+  <script defer src="/static/js/core.js"></script>
+  <script defer src="/static/js/components/modal.js"></script>
+  <script defer src="/static/js/tabs/dashboard.js"></script>
+  <script defer src="/static/js/tabs/catalog.js"></script>
+  <script defer src="/static/js/tabs/llm.js"></script>
+  <script defer src="/static/js/tabs/digests.js"></script>
+  <script defer src="/static/js/tabs/tts.js"></script>
+  <script defer src="/static/js/app.js"></script>
+</body>
+</html>

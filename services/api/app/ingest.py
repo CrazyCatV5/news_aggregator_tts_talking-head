@@ -1,149 +1,116 @@
-import json
-import datetime as dt
-from typing import Any, Dict, List, Tuple, Optional
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from queue import Queue, Empty
-import threading
+from __future__ import annotations
 
+import datetime as dt
+from typing import Any, Dict, List, Optional
+
+import json
 from .config import settings
 from .db import connect
-from .extractors import fetch_rss, fetch_html_index, fetch_article
 from .utils import fingerprint, canonicalize_url, normalize_whitespace
 from .scoring import score
-from .jobs import set_job, init_sources, update_source, push_error
+from .jobs import init_sources, update_source, push_error, set_job, incr_job, finalize_job_if_complete
+from .sources import get_parser, list_source_names
 
-def load_sources() -> List[Dict[str, Any]]:
-    with open(settings.sources_path, "r", encoding="utf-8") as f:
-        return json.load(f)
 
-def ingest_run(job_id: str, limit_per_html_source: int = 20) -> Dict[str, Any]:
-    sources = load_sources()
+def ingest_source(job_id: str, source_name: str, limit_per_html_source: int = 200) -> Dict[str, Any]:
+    """Ingest exactly one source.
+
+    This is designed to be executed by a per-source queue/worker so that:
+    - one broken source does not block other sources
+    - backpressure and retries can be handled independently per source
+    """
+    parser = get_parser(source_name)
     now = dt.datetime.now(dt.timezone.utc).isoformat()
 
-    init_sources(job_id, sources)
+    update_source(job_id, source_name, state="running", fetched_at=now, errors=0, links=0, articles_ok=0, inserted=0)
+
+    # Fetch
+    try:
+        items = parser.fetch_items(limit_per_html_source=limit_per_html_source)
+    except Exception as e:
+        push_error(job_id, source_name, "fetch", parser.config.url, str(e))
+        update_source(job_id, source_name, state="error", errors=1)
+        incr_job(job_id, errors_count=1, done_sources=1)
+        finalize_job_if_complete(job_id)
+        return {"ok": False, "source": source_name, "error": str(e)}
+
+    links_n = len(items)
+    update_source(job_id, source_name, links=links_n)
+
+    # Normalize + basic validation + store
+    inserted = 0
+    ok = 0
+
+    commit_every = max(1, int(settings.db_commit_every))
+    pending = 0
+
+    with connect() as con:
+        for it in items:
+            try:
+                it_norm = {
+                    "url": it.get("url") or "",
+                    "url_canon": it.get("url_canon") or canonicalize_url(it.get("url") or ""),
+                    "title": normalize_whitespace(it.get("title") or ""),
+                    "body": normalize_whitespace(it.get("body") or ""),
+                    "published_at": it.get("published_at"),
+                }
+                if len(it_norm["title"]) < 5:
+                    continue
+                # RSS often has short descriptions; keep the existing threshold but be less strict for RSS.
+                min_body = 80 if parser.config.kind == "rss" else 150
+                if len(it_norm["body"]) < min_body:
+                    continue
+
+                ok += 1
+                if _insert_item(con, source_name, it_norm, fetched_at=now):
+                    inserted += 1
+                    incr_job(job_id, ingested=1)
+                pending += 1
+                if pending >= commit_every:
+                    con.commit()
+                    pending = 0
+                if ok % 10 == 0:
+                    update_source(job_id, source_name, articles_ok=ok, inserted=inserted)
+            except Exception as e:
+                push_error(job_id, source_name, "store", it.get("url") or parser.config.url, str(e))
+                incr_job(job_id, errors_count=1)
+        if pending:
+            con.commit()
+
+    update_source(job_id, source_name, articles_ok=ok, inserted=inserted, state="done")
+    incr_job(job_id, done_sources=1, links_total=links_n, articles_total=ok)
+    finalize_job_if_complete(job_id)
+    return {"ok": True, "source": source_name, "links": links_n, "articles_ok": ok, "inserted": inserted}
+
+
+def ingest_job_init(job_id: str, sources: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    """Initialize job and source status structures in Redis."""
+    if sources is None:
+        # Build sources list from registry (canonical)
+        sources = [{"name": n, "kind": get_parser(n).config.kind, "url": get_parser(n).config.url} for n in list_source_names()]
+
+    now = int(dt.datetime.now(dt.timezone.utc).timestamp())
     set_job(
         job_id,
-        status="running",
-        fetched_at=now,
+        status="queued",
+        created_at=now,
+        updated_at=now,
+        fetched_at=dt.datetime.now(dt.timezone.utc).isoformat(),
         ingested=0,
         errors_count=0,
         total_sources=len(sources),
         done_sources=0,
         links_total=0,
         articles_total=0,
-        articles_done=0,
-        message="Starting",
+        message="Queued",
     )
+    init_sources(job_id, sources)
+    return {"ok": True, "job_id": job_id, "total_sources": len(sources)}
 
-    # Writer thread: single DB connection, consumes queue of normalized items
-    q: "Queue[Optional[Tuple[str, Dict[str, Any]]]]" = Queue(maxsize=2000)
-    ingested_counter = {"n": 0}
-    per_source_inserted = {}
-    stop_token = object()
 
-    def writer():
-        commit_every = max(1, settings.db_commit_every)
-        pending = 0
-        with connect() as con:
-            while True:
-                item = q.get()
-                if item is None:
-                    break
-                src_name, it = item
-                inserted = _insert_item(con, src_name, it, fetched_at=now)
-                if inserted:
-                    ingested_counter["n"] += 1
-                    per_source_inserted[src_name] = per_source_inserted.get(src_name, 0) + 1
-                    update_source(job_id, src_name, inserted=per_source_inserted[src_name])
-                pending += 1
-                if pending >= commit_every:
-                    con.commit()
-                    pending = 0
-                    set_job(job_id, ingested=ingested_counter["n"], message="Writing to DB")
-            if pending:
-                con.commit()
-
-    wt = threading.Thread(target=writer, daemon=True)
-    wt.start()
-
-    errors_count = 0
-    done_sources = 0
-
-    def handle_rss(src: Dict[str, Any]):
-        name, url = src["name"], src["url"]
-        update_source(job_id, name, state="fetching")
-        try:
-            items = fetch_rss(url)
-            # Push directly to writer queue
-            for it in items:
-                q.put((name, it))
-            update_source(job_id, name, state="done", links=len(items), articles_ok=len(items))
-            return {"name": name, "done": True, "links": len(items), "articles_ok": len(items)}
-        except Exception as e:
-            push_error(job_id, name, "rss", url, str(e))
-            update_source(job_id, name, state="error", errors=1)
-            return {"name": name, "done": True, "error": str(e)}
-
-    def handle_html(src: Dict[str, Any]):
-        name, url = src["name"], src["url"]
-        update_source(job_id, name, state="indexing")
-        try:
-            links = fetch_html_index(url, limit_links=limit_per_html_source)
-            update_source(job_id, name, links=len(links), state="fetching")
-        except Exception as e:
-            push_error(job_id, name, "index", url, str(e))
-            update_source(job_id, name, state="error", errors=1)
-            return {"name": name, "done": True, "error": str(e)}
-
-        # Fetch articles in parallel
-        ok = 0
-        with ThreadPoolExecutor(max_workers=settings.article_concurrency) as ex2:
-            futs = {ex2.submit(fetch_article, link): link for link in links}
-            for fut in as_completed(futs):
-                link = futs[fut]
-                try:
-                    art = fut.result()
-                    it = {
-                        "url": link,
-                        "url_canon": canonicalize_url(link),
-                        "title": art.get("title") or "",
-                        "body": art.get("body") or "",
-                        "published_at": art.get("published_at"),
-                    }
-                    if len(it["title"]) >= 5 and len(it["body"]) >= 150:
-                        q.put((name, it))
-                        ok += 1
-                        update_source(job_id, name, articles_ok=ok)
-                except Exception as e:
-                    push_error(job_id, name, "article", link, str(e))
-        update_source(job_id, name, state="done")
-        return {"name": name, "done": True, "links": len(links), "articles_ok": ok}
-
-    # Source-level parallelism
-    with ThreadPoolExecutor(max_workers=settings.fetch_concurrency) as ex:
-        futs = {}
-        for s in sources:
-            if s["kind"] == "rss":
-                futs[ex.submit(handle_rss, s)] = s
-            else:
-                futs[ex.submit(handle_html, s)] = s
-
-        for fut in as_completed(futs):
-            s = futs[fut]
-            name = s["name"]
-            res = fut.result()
-            done_sources += 1
-            if "error" in res:
-                errors_count += 1
-                set_job(job_id, errors_count=errors_count)
-            set_job(job_id, done_sources=done_sources, message=f"Completed source: {name}")
-
-    # finalize
-    q.put(None)
-    wt.join(timeout=120)
-
-    set_job(job_id, status="done", ingested=ingested_counter["n"], errors_count=errors_count, message="Completed")
-    return {"ok": True, "job_id": job_id, "ingested": ingested_counter["n"], "errors_count": errors_count, "fetched_at": now}
+def _safe_int(v: Any, default: int = 0) -> int:
+    try: return int(v)
+    except Exception: return default
 
 def _insert_item(con, source_name: str, it: Dict[str, Any], fetched_at: str) -> int:
     url = it.get("url") or it.get("url_canon") or ""
@@ -155,21 +122,33 @@ def _insert_item(con, source_name: str, it: Dict[str, Any], fetched_at: str) -> 
     if not title:
         return 0
 
+    # Stable fingerprint + dedup by canonical URL.
     fp = fingerprint(title, url_canon)
-    fulltext = f"{title}. {body}"
-    biz, dfo, has_company, reasons = score(fulltext)
 
-    before = con.total_changes
-    con.execute(
+    # scoring.score(text) -> (business_score, dfo_score, has_company, reasons_dict)
+    business_score, dfo_score, has_company, reasons = score(f"{title} {body}")
+    reasons_json = json_dumps(reasons)
+
+    cur = con.execute(
         """
-        INSERT OR IGNORE INTO items
-        (source_name, url, url_canon, title, body, published_at, fetched_at, fingerprint,
-         business_score, dfo_score, has_company, reasons)
+        INSERT OR IGNORE INTO items (
+            source_name, url, url_canon, title, body,
+            published_at, fetched_at,
+            fingerprint, business_score, dfo_score,
+            has_company, reasons
+        )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
-            source_name, url, url_canon, title, body, published_at, fetched_at, fp,
-            int(biz), int(dfo), int(has_company), json.dumps(reasons, ensure_ascii=False),
+            source_name, url, url_canon, title, body,
+            published_at, fetched_at,
+            fp, _safe_int(business_score), _safe_int(dfo_score),
+            _safe_int(has_company), reasons_json,
         ),
     )
-    return 1 if con.total_changes > before else 0
+    return 1
+
+
+def json_dumps(obj: Any) -> str:
+    import json
+    return json.dumps(obj, ensure_ascii=False)

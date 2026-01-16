@@ -1,0 +1,86 @@
+<section id="tab-catalog" class="tab-section hidden">
+    <div class="card">
+      <h3 style="margin:0 0 10px 0">Catalog</h3>
+      <div class="small">Поиск по тексту, времени публикации, источнику и тегам biz/dfo.</div>
+
+      <div class="grid-2" style="margin-top:10px">
+        <div>
+          <label class="small" for="catQuery">Text</label>
+          <input id="catQuery" type="text" placeholder="..."/>
+        </div>
+        <div>
+          <label class="small" for="catSource">Source</label>
+          <select id="catSource"></select>
+        </div>
+        <div>
+          <label class="small" for="catSort">Sort</label>
+          <select id="catSort">
+            <option value="">published desc</option>
+            <option value="published_asc">published asc</option>
+            <option value="source_asc">source asc</option>
+            <option value="source_desc">source desc</option>
+          </select>
+        </div>
+        <div>
+          <label class="small" for="catExcludeWar">Exclude war</label>
+          <div>
+            <input id="catExcludeWar" type="checkbox"/>
+          </div>
+        </div>
+        <div>
+          <label class="small" for="catPublishedFrom">Published from</label>
+          <input id="catPublishedFrom" type="datetime-local"/>
+        </div>
+        <div>
+          <label class="small" for="catPublishedTo">Published to</label>
+          <input id="catPublishedTo" type="datetime-local"/>
+        </div>
+        <div>
+          <label class="small" for="catBizMin">biz ≥</label>
+          <input id="catBizMin" type="number" min="0" max="1" step="0.01" placeholder="0"/>
+        </div>
+        <div>
+          <label class="small" for="catDfoMin">dfo ≥</label>
+          <input id="catDfoMin" type="number" min="0" max="1" step="0.01" placeholder="0"/>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px; align-items:center; gap:12px">
+        <label class="small" style="display:flex; gap:8px; align-items:center">
+          <input id="catHasCompany" type="checkbox"/>
+          has_company
+        </label>
+        <label class="small" style="display:flex; gap:8px; align-items:center">
+          <input id="catExcludeWar" type="checkbox"/>
+          exclude war
+        </label>
+        <label class="small" style="display:flex; gap:8px; align-items:center">
+          sort
+          <select id="catSort" style="width:180px">
+            <option value="published_desc">by time</option>
+            <option value="source_asc">by source (A→Z)</option>
+            <option value="source_desc">by source (Z→A)</option>
+            <option value="published_asc">oldest first</option>
+          </select>
+        </label>
+        <div class="grow"></div>
+        <button id="catSearch" type="button">Search</button>
+        <button id="catReset" type="button" class="ghost">Reset</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <div class="grow">
+          <h3 style="margin:0">Results</h3>
+          <div class="small" id="catSummary">—</div>
+        </div>
+        <div class="row" style="gap:8px">
+          <button id="catPrev" type="button" class="ghost">Prev</button>
+          <button id="catNext" type="button" class="ghost">Next</button>
+        </div>
+      </div>
+
+      <div id="catList" class="list" style="margin-top:10px"></div>
+    </div>
+  </section>

@@ -1,0 +1,15 @@
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.10.4
+python-multipart==0.0.9
+soundfile==0.12.1
+numpy==1.26.4
+
+# Coqui TTS (includes XTTS v2)
+TTS==0.22.0
+
+# Pin transformers for Coqui TTS 0.22.x compatibility (BeamSearchScorer import)
+transformers==4.44.2
+sentencepiece
+tokenizers<0.20
+torchcodec==0.8.1

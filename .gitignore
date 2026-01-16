@@ -1,2 +1,5 @@
 .idea
 *.zip
+/tts_out
+*.wav
+*.rar

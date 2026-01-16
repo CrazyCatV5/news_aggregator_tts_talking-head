@@ -1,10 +1,69 @@
 name: news_bot
+
 services:
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports: ["6379:6379"]
     restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    ports: ["11434:11434"]
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: ["gpu"]
+  ollama-init:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+      - ./scripts/ollama_init.sh:/ollama_init.sh:ro
+    environment:
+      # ~4–6GB class model (good RU quality, cheaper VRAM)
+      LLM_MODEL: qwen3:8b
+    entrypoint: ["/bin/sh", "/ollama_init.sh"]
+    restart: "no"
+    depends_on: [ollama]
+
+  llm:
+    build: ./services/llm
+    ports: ["8099:8099"]
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      LLM_MODEL: qwen3:8b
+      # Keep context moderate; long articles are chunked in llm service
+      LLM_NUM_CTX: "16384"
+      LLM_TIMEOUT: "360"
+    depends_on: [ollama, ollama-init]
+    restart: unless-stopped
+
+  tts:
+    build: ./services/tts
+    ports: ["8101:8101"]
+    environment:
+      # Non-interactive ToS acceptance for model download. Set to 0 to require interactive consent.
+      COQUI_TOS_ACCEPTED: "1"
+      # Keep model cache on the shared volume
+      TTS_HOME: /data/tts-cache
+    volumes:
+      - appdata:/data
+      - ./data/voices:/data/voices:ro
+      - ./tts_out:/data/tts
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: ["gpu"]
 
   api:
     build: ./services/api
@@ -18,10 +77,16 @@ services:
       FETCH_CONCURRENCY: "16"
       ARTICLE_CONCURRENCY: "32"
       DB_COMMIT_EVERY: "25"
+      LLM_SERVICE_URL: http://llm:8099
+      TTS_SERVICE_URL: http://tts:8101
+      TTS_REF_WAV: /data/voices/ref_clean_g.wav
+      TTS_OUT_DIR: /data/tts
     volumes:
       - ./sources.json:/app/sources.json:ro
       - appdata:/data
-    depends_on: [redis]
+      - ./data/voices:/data/voices:ro
+      - ./tts_out:/data/tts
+    depends_on: [redis, llm, tts]
     restart: unless-stopped
 
   worker:
@@ -42,5 +107,21 @@ services:
     depends_on: [redis]
     restart: unless-stopped
 
+  llm_worker:
+    build: ./services/api
+    command: ["python", "-m", "app.llm_worker"]
+    environment:
+      DB_PATH: /data/app.db
+      REDIS_URL: redis://redis:6379/0
+      LLM_SERVICE_URL: http://llm:8099
+      LLM_MODEL: qwen3:8b
+      LLM_PROMPT_VERSION: v1.0
+      LLM_TIMEOUT: "240"
+    volumes:
+      - appdata:/data
+    depends_on: [redis, llm]
+    restart: unless-stopped
+
 volumes:
   appdata:
+  ollama:

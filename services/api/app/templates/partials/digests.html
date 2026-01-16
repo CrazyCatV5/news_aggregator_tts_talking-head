@@ -1,0 +1,80 @@
+<section id="tab-digests" class="tab-section hidden">
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <div class="muted">
+          Ежедневный дайджест фиксируется в БД и состоит из ТОП-5 новостей по данным последнего LLM-анализа.
+          Правила: сначала D и D-1, затем добор из более ранних дней (до N дней), глобальная уникальность новостей.
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px; gap:10px; align-items:center">
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        day
+        <input id="digDay" type="date" />
+      </label>
+      <button id="digLoadBtn" class="btn" type="button">Load</button>
+      <button id="digCreateBtn" class="btn" type="button">Create / Refill</button>
+      <button id="digForceBtn" class="btn" type="button">Force rebuild</button>
+      <button id="digScriptBtn" class="btn" type="button">Generate script</button>
+      <button id="digScriptForceBtn" class="btn" type="button">Force script</button>
+      <div class="grow"></div>
+      <button id="digRefreshListBtn" class="btn ghost" type="button">Refresh list</button>
+    </div>
+
+    <div class="row" style="margin-top:10px; gap:14px; flex-wrap:wrap">
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        min_interest
+        <input id="digMinInterest" type="number" min="0" max="100" value="5" style="width:84px" />
+      </label>
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        prefer_days
+        <input id="digPreferDays" type="number" min="1" max="7" value="2" style="width:84px" />
+      </label>
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        max_lookback_days
+        <input id="digLookback" type="number" min="1" max="365" value="60" style="width:92px" />
+      </label>
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        <input id="digExcludeWar" type="checkbox" checked />
+        exclude_war
+      </label>
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        <input id="digOnlyDfoBiz" type="checkbox" checked />
+        only_dfo_business
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <div><b>Digest:</b> <span id="digMeta" class="mono">—</span></div>
+        <div class="small muted" id="digDiag">—</div>
+      </div>
+    </div>
+    <div id="digItems" class="list" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <div><b>Script:</b> <span id="digScriptMeta" class="mono">—</span></div>
+        <div class="small muted">Хранится в daily_digests.script_json как массив сегментов для будущего TTS.</div>
+      </div>
+    </div>
+    <pre id="digScriptText" class="mono" style="margin-top:10px;white-space:pre-wrap">—</pre>
+    <details style="margin-top:10px">
+      <summary class="mono">raw script_json</summary>
+      <pre id="digScriptJson" class="mono" style="white-space:pre-wrap">—</pre>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow"><b>History:</b> <span id="digHistoryCount" class="mono">—</span></div>
+    </div>
+    <div id="digHistory" class="list" style="margin-top:10px"></div>
+  </div>
+</section>

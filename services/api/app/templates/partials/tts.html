@@ -1,0 +1,61 @@
+<section id="tab-tts" class="tab-section hidden">
+  <div class="card">
+    <div class="row" style="align-items:center; gap:10px; flex-wrap:wrap">
+      <div class="grow">
+        <div class="muted">
+          Рендер аудио из daily_digests.script_json через XTTS v2. Сервис TTS должен быть запущен и иметь доступ к референсному WAV.
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px; gap:10px; align-items:center; flex-wrap:wrap">
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        day
+        <input id="ttsDay" type="date" />
+      </label>
+
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        language
+        <select id="ttsLang" style="width:120px">
+          <option value="ru" selected>ru</option>
+          <option value="en">en</option>
+        </select>
+      </label>
+
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        voice wav
+        <input id="ttsVoice" type="text" placeholder="/data/voices/ref_clean_g.wav" style="width:320px" />
+      </label>
+
+      <div class="grow"></div>
+      <button id="ttsRenderBtn" class="btn" type="button">Render audio</button>
+      <button id="ttsRefreshBtn" class="btn ghost" type="button">Refresh</button>
+    </div>
+
+    <div class="small muted" id="ttsStatus" style="margin-top:10px">—</div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <div><b>Output:</b> <span id="ttsMeta" class="mono">—</span></div>
+        <div class="small muted">Если аудио уже было сгенерировано — можно сразу воспроизвести/скачать.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:10px">
+      <audio id="ttsPlayer" controls style="width:100%"></audio>
+    </div>
+
+    <div class="row" style="margin-top:10px; align-items:center; gap:10px; flex-wrap:wrap">
+      <a id="ttsDownloadLink" class="mono" href="#" target="_blank" rel="noopener">—</a>
+      <div class="grow"></div>
+      <button id="ttsCopyLinkBtn" class="btn ghost" type="button">Copy link</button>
+    </div>
+
+    <details style="margin-top:10px">
+      <summary class="mono">raw response</summary>
+      <pre id="ttsRaw" class="mono" style="white-space:pre-wrap">—</pre>
+    </details>
+  </div>
+</section>

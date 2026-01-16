@@ -1,0 +1,27 @@
+<section id="tab-llm" class="tab-section hidden">
+  <div class="card">
+    <div class="row">
+      <div class="grow">
+        <div class="muted">LLM-анализ отбирает новости по фильтрам (exclude war + dfo ≥ 2 + business ≥ 2), оценивает релевантность и генерирует краткую подводку для ведущего.</div>
+      </div>
+      <div class="row">
+        <button id="llmEnqueueBtn" class="btn" type="button">Enqueue (24h)</button>
+        <button id="llmRefreshBtn" class="btn" type="button">Refresh</button>
+        <label class="mono" style="display:flex;align-items:center;gap:8px;margin-left:12px;">
+          <input id="llmOnlyDfoBusiness" type="checkbox" checked />
+          only_dfo_business
+        </label>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="grow">
+        <div><b>Items:</b> <span id="llmCount" class="mono">—</span></div>
+      </div>
+    </div>
+    <div id="llmList" class="list"></div>
+  </div>
+</section>

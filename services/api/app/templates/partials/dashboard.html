@@ -1,0 +1,126 @@
+<section id="tab-dashboard" class="tab-section">
+
+  <div class="card">
+    <div class="row">
+      <div class="grow">
+        <div><b>Status:</b> <span id="status" class="mono">idle</span></div>
+        <div><b>Job:</b> <span id="job" class="mono">—</span></div>
+        <div><b>Created:</b> <span id="created" class="mono">—</span></div>
+        <div><b>Updated:</b> <span id="updated" class="mono">—</span></div>
+        <div><b>Sources:</b> <span id="sources" class="mono">—</span></div>
+        <div><b>Ingested:</b> <span id="ingested" class="mono">—</span></div>
+        <div><b>Errors:</b> <span id="errors" class="mono">—</span></div>
+        <div><b>Message:</b> <span id="message" class="mono">—</span></div>
+      </div>
+      <div>
+        <button id="run">Run ingest</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <h3 style="margin:0">Recent jobs</h3>
+        <div class="small">Выбери job из списка или вставь ID вручную.</div>
+      </div>
+      <div class="mono">
+        job id <input id="jobId" type="text" placeholder="<job_id>" style="width:280px"/>
+      </div>
+      <div>
+        <button id="openJob">Open</button>
+      </div>
+      <div>
+        <button id="refreshJobs">Refresh</button>
+      </div>
+    </div>
+    <div style="overflow:auto;margin-top:10px">
+      <table>
+        <thead>
+          <tr>
+            <th>Job ID</th><th>Status</th><th>Created</th><th>Updated</th><th>Ingested</th><th>Errors</th>
+          </tr>
+        </thead>
+        <tbody id="jobsTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Per-source progress</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Source</th><th>State</th><th>Links</th><th>Articles OK</th><th>Inserted</th><th>Errors</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <h3 style="margin:0">News by days</h3>
+        <div class="small">Группировка по published_at; если нет — по fetched_at.</div>
+      </div>
+      <div class="mono">
+        days <input id="days" type="number" min="1" max="31" value="7" style="width:70px"/>
+        biz ≥ <input id="minBiz" type="number" min="0" max="10" value="2" style="width:60px"/>
+        dfo ≥ <input id="minDfo" type="number" min="0" max="10" value="2" style="width:60px"/>
+        company <input id="reqCompany" type="checkbox"/>
+        exclude war <input id="excludeWar" type="checkbox"/>
+        sort
+        <select id="newsSort" style="width:160px">
+          <option value="time_desc">by time</option>
+          <option value="source_asc">by source</option>
+        </select>
+      </div>
+      <div>
+        <button id="loadNews">Load</button>
+      </div>
+    </div>
+    <div id="newsByDay" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Удаление</h3>
+    <div class="row" style="align-items:center">
+      <div class="mono">
+        item id <input id="delId" type="number" min="1" value="" style="width:120px"/>
+      </div>
+      <div>
+        <button id="delOne">Delete item</button>
+      </div>
+      <div class="mono">
+        day <input id="delDay" type="text" placeholder="YYYY-MM-DD" style="width:140px"/>
+      </div>
+      <div>
+        <button id="delByDay">Delete day</button>
+      </div>
+      <div class="mono">
+        purge older than days <input id="purgeDays" type="number" min="1" value="30" style="width:90px"/>
+      </div>
+      <div>
+        <button id="purgeBtn">Purge</button>
+      </div>
+    </div>
+    <div class="small">Удаления влияют только на БД items.</div>
+  </div>
+
+  <div class="card">
+    <div>Useful endpoints:</div>
+    <ul>
+      <li><code>/news</code> — selected items</li>
+      <li><code>/digest</code> — digest text</li>
+      <li><code>/news/by-day</code> — grouped</li>
+      <li><code>/items/{id}</code> (DELETE)</li>
+      <li><code>/items/by-day?day=YYYY-MM-DD</code> (DELETE)</li>
+      <li><code>/items/purge?days=N</code> (DELETE)</li>
+      <li><code>/jobs/{id}</code> — job status</li>
+      <li><code>/jobs/{id}/detail</code> — per-source</li>
+      <li><code>/docs</code> — Swagger</li>
+    </ul>
+  </div>
+
+  </section>

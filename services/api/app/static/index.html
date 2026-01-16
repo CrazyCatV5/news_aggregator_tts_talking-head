@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+    <meta name="api-base" content=""/>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>DFO News Aggregator — Dashboard</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <h1>DFO Business News Aggregator</h1>
+
+  <div class="card">
+    <h3 style="margin:0 0 8px 0">UI log</h3>
+    <div class="mono" id="jslog" style="white-space:pre-wrap;color:#555"></div>
+  </div>
+
+  <!-- Full text modal (article stored in DB) -->
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal__backdrop" id="modalBackdrop" aria-label="Close"></div>
+    <div class="modal__panel" role="document">
+      <div class="modal__header">
+        <div class="modal__title" id="modalTitle">—</div>
+        <button class="modal__close" id="modalClose" title="Close" aria-label="Close">×</button>
+      </div>
+      <div class="modal__meta mono" id="modalMeta"></div>
+      <div class="modal__body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="tabs" aria-label="Sections">
+    <button class="tab-btn active" data-tab="dashboard" type="button">Dashboard</button>
+    <button class="tab-btn" data-tab="catalog" type="button">Catalog</button>
+    <button class="tab-btn" data-tab="llm" type="button">LLM Digest</button>
+    <button class="tab-btn" data-tab="digests" type="button">Daily Digests</button>
+    <button class="tab-btn" data-tab="tts" type="button">TTS Audio</button>
+  </div>
+
+  <section id="tab-dashboard" class="tab-section">
+
+  <div class="card">
+    <div class="row">
+      <div class="grow">
+        <div><b>Status:</b> <span id="status" class="mono">idle</span></div>
+        <div><b>Job:</b> <span id="job" class="mono">—</span></div>
+        <div><b>Created:</b> <span id="created" class="mono">—</span></div>
+        <div><b>Updated:</b> <span id="updated" class="mono">—</span></div>
+        <div><b>Sources:</b> <span id="sources" class="mono">—</span></div>
+        <div><b>Ingested:</b> <span id="ingested" class="mono">—</span></div>
+        <div><b>Errors:</b> <span id="errors" class="mono">—</span></div>
+        <div><b>Message:</b> <span id="message" class="mono">—</span></div>
+      </div>
+      <div>
+        <button id="run">Run ingest</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <h3 style="margin:0">Recent jobs</h3>
+        <div class="small">Выбери job из списка или вставь ID вручную.</div>
+      </div>
+      <div class="mono">
+        job id <input id="jobId" type="text" placeholder="<job_id>" style="width:280px"/>
+      </div>
+      <div>
+        <button id="openJob">Open</button>
+      </div>
+      <div>
+        <button id="refreshJobs">Refresh</button>
+      </div>
+    </div>
+    <div style="overflow:auto;margin-top:10px">
+      <table>
+        <thead>
+          <tr>
+            <th>Job ID</th><th>Status</th><th>Created</th><th>Updated</th><th>Ingested</th><th>Errors</th>
+          </tr>
+        </thead>
+        <tbody id="jobsTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Per-source progress</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Source</th><th>State</th><th>Links</th><th>Articles OK</th><th>Inserted</th><th>Errors</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <h3 style="margin:0">News by days</h3>
+        <div class="small">Группировка по published_at; если нет — по fetched_at.</div>
+      </div>
+      <div class="mono">
+        days <input id="days" type="number" min="1" max="31" value="7" style="width:70px"/>
+        biz ≥ <input id="minBiz" type="number" min="0" max="10" value="2" style="width:60px"/>
+        dfo ≥ <input id="minDfo" type="number" min="0" max="10" value="2" style="width:60px"/>
+        company <input id="reqCompany" type="checkbox"/>
+        exclude war <input id="excludeWar" type="checkbox"/>
+        sort
+        <select id="newsSort" style="width:160px">
+          <option value="time_desc">by time</option>
+          <option value="source_asc">by source</option>
+        </select>
+      </div>
+      <div>
+        <button id="loadNews">Load</button>
+      </div>
+    </div>
+    <div id="newsByDay" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Удаление</h3>
+    <div class="row" style="align-items:center">
+      <div class="mono">
+        item id <input id="delId" type="number" min="1" value="" style="width:120px"/>
+      </div>
+      <div>
+        <button id="delOne">Delete item</button>
+      </div>
+      <div class="mono">
+        day <input id="delDay" type="text" placeholder="YYYY-MM-DD" style="width:140px"/>
+      </div>
+      <div>
+        <button id="delByDay">Delete day</button>
+      </div>
+      <div class="mono">
+        purge older than days <input id="purgeDays" type="number" min="1" value="30" style="width:90px"/>
+      </div>
+      <div>
+        <button id="purgeBtn">Purge</button>
+      </div>
+    </div>
+    <div class="small">Удаления влияют только на БД items.</div>
+  </div>
+
+  <div class="card">
+    <div>Useful endpoints:</div>
+    <ul>
+      <li><code>/news</code> — selected items</li>
+      <li><code>/digest</code> — digest text</li>
+      <li><code>/news/by-day</code> — grouped</li>
+      <li><code>/items/{id}</code> (DELETE)</li>
+      <li><code>/items/by-day?day=YYYY-MM-DD</code> (DELETE)</li>
+      <li><code>/items/purge?days=N</code> (DELETE)</li>
+      <li><code>/jobs/{id}</code> — job status</li>
+      <li><code>/jobs/{id}/detail</code> — per-source</li>
+      <li><code>/docs</code> — Swagger</li>
+    </ul>
+  </div>
+
+  </section>
+
+  <section id="tab-catalog" class="tab-section hidden">
+    <div class="card">
+      <h3 style="margin:0 0 10px 0">Catalog</h3>
+      <div class="small">Поиск по тексту, времени публикации, источнику и тегам biz/dfo.</div>
+
+      <div class="grid-2" style="margin-top:10px">
+        <div>
+          <label class="small" for="catQuery">Text</label>
+          <input id="catQuery" type="text" placeholder="..."/>
+        </div>
+        <div>
+          <label class="small" for="catSource">Source</label>
+          <select id="catSource"></select>
+        </div>
+        <div>
+          <label class="small" for="catSort">Sort</label>
+          <select id="catSort">
+            <option value="">published desc</option>
+            <option value="published_asc">published asc</option>
+            <option value="source_asc">source asc</option>
+            <option value="source_desc">source desc</option>
+          </select>
+        </div>
+        <div>
+          <label class="small" for="catExcludeWar">Exclude war</label>
+          <div>
+            <input id="catExcludeWar" type="checkbox"/>
+          </div>
+        </div>
+        <div>
+          <label class="small" for="catPublishedFrom">Published from</label>
+          <input id="catPublishedFrom" type="datetime-local"/>
+        </div>
+        <div>
+          <label class="small" for="catPublishedTo">Published to</label>
+          <input id="catPublishedTo" type="datetime-local"/>
+        </div>
+        <div>
+          <label class="small" for="catBizMin">biz ≥</label>
+          <input id="catBizMin" type="number" min="0" max="1" step="0.01" placeholder="0"/>
+        </div>
+        <div>
+          <label class="small" for="catDfoMin">dfo ≥</label>
+          <input id="catDfoMin" type="number" min="0" max="1" step="0.01" placeholder="0"/>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px; align-items:center; gap:12px">
+        <label class="small" style="display:flex; gap:8px; align-items:center">
+          <input id="catHasCompany" type="checkbox"/>
+          has_company
+        </label>
+        <label class="small" style="display:flex; gap:8px; align-items:center">
+          <input id="catExcludeWar" type="checkbox"/>
+          exclude war
+        </label>
+        <label class="small" style="display:flex; gap:8px; align-items:center">
+          sort
+          <select id="catSort" style="width:180px">
+            <option value="published_desc">by time</option>
+            <option value="source_asc">by source (A→Z)</option>
+            <option value="source_desc">by source (Z→A)</option>
+            <option value="published_asc">oldest first</option>
+          </select>
+        </label>
+        <div class="grow"></div>
+        <button id="catSearch" type="button">Search</button>
+        <button id="catReset" type="button" class="ghost">Reset</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <div class="grow">
+          <h3 style="margin:0">Results</h3>
+          <div class="small" id="catSummary">—</div>
+        </div>
+        <div class="row" style="gap:8px">
+          <button id="catPrev" type="button" class="ghost">Prev</button>
+          <button id="catNext" type="button" class="ghost">Next</button>
+        </div>
+      </div>
+
+      <div id="catList" class="list" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+<section id="tab-llm" class="tab-section hidden">
+  <div class="card">
+    <div class="row">
+      <div class="grow">
+        <div class="muted">LLM-анализ отбирает новости по фильтрам (exclude war + dfo ≥ 2 + business ≥ 2), оценивает релевантность и генерирует краткую подводку для ведущего.</div>
+      </div>
+      <div class="row">
+        <button id="llmEnqueueBtn" class="btn" type="button">Enqueue (24h)</button>
+        <button id="llmRefreshBtn" class="btn" type="button">Refresh</button>
+        <label class="mono" style="display:flex;align-items:center;gap:8px;margin-left:12px;">
+          <input id="llmOnlyDfoBusiness" type="checkbox" checked />
+          only_dfo_business
+        </label>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="grow">
+        <div><b>Items:</b> <span id="llmCount" class="mono">—</span></div>
+      </div>
+    </div>
+    <div id="llmList" class="list"></div>
+  </div>
+</section>
+
+
+<section id="tab-digests" class="tab-section hidden">
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <div class="muted">
+          Ежедневный дайджест фиксируется в БД и состоит из ТОП-5 новостей по данным последнего LLM-анализа.
+          Правила: сначала D и D-1, затем добор из более ранних дней (до N дней), глобальная уникальность новостей.
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px; gap:10px; align-items:center">
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        day
+        <input id="digDay" type="date" />
+      </label>
+      <button id="digLoadBtn" class="btn" type="button">Load</button>
+      <button id="digCreateBtn" class="btn" type="button">Create / Refill</button>
+      <button id="digForceBtn" class="btn" type="button">Force rebuild</button>
+      <button id="digScriptBtn" class="btn" type="button">Generate script</button>
+      <button id="digScriptForceBtn" class="btn" type="button">Force script</button>
+      <div class="grow"></div>
+      <button id="digRefreshListBtn" class="btn ghost" type="button">Refresh list</button>
+    </div>
+
+    <div class="row" style="margin-top:10px; gap:14px; flex-wrap:wrap">
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        min_interest
+        <input id="digMinInterest" type="number" min="0" max="100" value="5" style="width:84px" />
+      </label>
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        prefer_days
+        <input id="digPreferDays" type="number" min="1" max="7" value="2" style="width:84px" />
+      </label>
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        max_lookback_days
+        <input id="digLookback" type="number" min="1" max="365" value="60" style="width:92px" />
+      </label>
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        <input id="digExcludeWar" type="checkbox" checked />
+        exclude_war
+      </label>
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        <input id="digOnlyDfoBiz" type="checkbox" checked />
+        only_dfo_business
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <div><b>Digest:</b> <span id="digMeta" class="mono">—</span></div>
+        <div class="small muted" id="digDiag">—</div>
+      </div>
+    </div>
+    <div id="digItems" class="list" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <div><b>Script:</b> <span id="digScriptMeta" class="mono">—</span></div>
+        <div class="small muted">Хранится в daily_digests.script_json как массив сегментов для будущего TTS.</div>
+      </div>
+    </div>
+    <pre id="digScriptText" class="mono" style="margin-top:10px;white-space:pre-wrap">—</pre>
+    <details style="margin-top:10px">
+      <summary class="mono">raw script_json</summary>
+      <pre id="digScriptJson" class="mono" style="white-space:pre-wrap">—</pre>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow"><b>History:</b> <span id="digHistoryCount" class="mono">—</span></div>
+    </div>
+    <div id="digHistory" class="list" style="margin-top:10px"></div>
+  </div>
+</section>
+
+<section id="tab-tts" class="tab-section hidden">
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <div class="muted">
+          Генерация аудио (TTS) по ежедневному дайджесту. Аудио хранится в <span class="mono">/data/tts</span> и доступно по ссылке загрузки.
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px; gap:10px; align-items:center; flex-wrap:wrap">
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        day
+        <input id="ttsDay" type="date" />
+      </label>
+
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        voice
+        <input id="ttsVoice" type="text" value="ref" style="width:140px" />
+      </label>
+
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        language
+        <input id="ttsLang" type="text" placeholder="auto" style="width:120px"  value="ru" />
+      </label>
+
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        <input id="ttsForce" type="checkbox" />
+        force
+      </label>
+
+      <button id="ttsCheckBtn" class="btn" type="button">Check</button>
+      <button id="ttsRenderBtn" class="btn" type="button">Render audio</button>
+      <div class="grow"></div>
+      <button id="ttsOpenDigestBtn" class="btn ghost" type="button">Open digest</button>
+    </div>
+
+    <div class="row" style="margin-top:10px; gap:10px; flex-wrap:wrap">
+      <div class="mono"><b>Status:</b> <span id="ttsStatus">—</span></div>
+      <div class="mono"><b>File:</b> <span id="ttsFile">—</span></div>
+      <div class="mono"><b>Voice:</b> <span id="ttsVoiceOut">—</span></div>
+      <div class="mono"><b>Lang:</b> <span id="ttsLangOut">—</span></div>
+    </div>
+
+    <div class="row" style="margin-top:10px; gap:10px; align-items:center; flex-wrap:wrap">
+      <a id="ttsDownload" class="mono" href="#" target="_blank" rel="noopener" style="display:none">Download WAV</a>
+      <audio id="ttsPlayer" controls style="display:none; width: min(820px, 100%);"></audio>
+    </div>
+
+    <div class="mono muted" id="ttsMeta" style="margin-top:10px; white-space:pre-wrap"></div>
+  </div>
+</section>
+<script defer src="/static/js/app.js"></script>
+</body>
+</html>
