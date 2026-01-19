@@ -44,7 +44,7 @@ def main():
         try:
             # Do not overwrite job totals here; orchestrator sets them.
             set_job(job_id, status="running", message=f"{worker_label} started {src}")
-            ingest_source(job_id=job_id, source_name=src, limit_per_html_source=limit)
+            ingest_source(job_id=job_id, source_name=src, limit_per_html_source=500)
         except Exception as e:
             set_job(job_id, status="failed", message=f"{worker_label} failed {src}: {e}")
         time.sleep(0.05)

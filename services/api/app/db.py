@@ -186,6 +186,7 @@ def _ensure_daily_digest_schema(con: sqlite3.Connection) -> None:
               language TEXT NOT NULL DEFAULT 'ru',
               voice_wav TEXT NOT NULL DEFAULT '',
               file_name TEXT NOT NULL,
+              file_path TEXT NOT NULL DEFAULT '',
               created_at TEXT NOT NULL,
               meta_json TEXT NOT NULL DEFAULT '{}',
               FOREIGN KEY(digest_id) REFERENCES daily_digests(id) ON DELETE CASCADE
@@ -202,6 +203,8 @@ def _ensure_daily_digest_schema(con: sqlite3.Connection) -> None:
             con.execute("ALTER TABLE tts_outputs ADD COLUMN voice_wav TEXT NOT NULL DEFAULT ''; ")
         if "file_name" not in cols:
             con.execute("ALTER TABLE tts_outputs ADD COLUMN file_name TEXT NOT NULL DEFAULT ''; ")
+        if "file_path" not in cols:
+            con.execute("ALTER TABLE tts_outputs ADD COLUMN file_path TEXT NOT NULL DEFAULT ''; ")
         if "created_at" not in cols:
             con.execute("ALTER TABLE tts_outputs ADD COLUMN created_at TEXT NOT NULL DEFAULT ''; ")
         if "meta_json" not in cols:
@@ -216,6 +219,51 @@ def _ensure_daily_digest_schema(con: sqlite3.Connection) -> None:
                 WHERE day IS NULL OR day = ''
                 """
             )
+        except Exception:
+            pass
+
+    # --- video_outputs ---
+    if not _table_exists(con, "video_outputs"):
+        con.executescript(
+            '''
+            CREATE TABLE IF NOT EXISTS video_outputs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              digest_id INTEGER NOT NULL,
+              day TEXT NOT NULL,
+              language TEXT NOT NULL DEFAULT 'ru',
+              image_path TEXT NOT NULL DEFAULT '',
+              audio_file_name TEXT NOT NULL DEFAULT '',
+              video_file_name TEXT NOT NULL DEFAULT '',
+              video_path TEXT NOT NULL DEFAULT '',
+              created_at TEXT NOT NULL,
+              meta_json TEXT NOT NULL DEFAULT '{}',
+              FOREIGN KEY(digest_id) REFERENCES daily_digests(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_video_outputs_day_lang ON video_outputs(day, language);
+            '''
+        )
+    else:
+        cols = _table_columns(con, "video_outputs")
+        # best-effort additive migrations
+        if "day" not in cols:
+            con.execute("ALTER TABLE video_outputs ADD COLUMN day TEXT;")
+        if "language" not in cols:
+            con.execute("ALTER TABLE video_outputs ADD COLUMN language TEXT NOT NULL DEFAULT 'ru';")
+        if "image_path" not in cols:
+            con.execute("ALTER TABLE video_outputs ADD COLUMN image_path TEXT NOT NULL DEFAULT ''; ")
+        if "audio_file_name" not in cols:
+            con.execute("ALTER TABLE video_outputs ADD COLUMN audio_file_name TEXT NOT NULL DEFAULT ''; ")
+        if "video_file_name" not in cols:
+            con.execute("ALTER TABLE video_outputs ADD COLUMN video_file_name TEXT NOT NULL DEFAULT ''; ")
+        if "video_path" not in cols:
+            con.execute("ALTER TABLE video_outputs ADD COLUMN video_path TEXT NOT NULL DEFAULT ''; ")
+        if "created_at" not in cols:
+            con.execute("ALTER TABLE video_outputs ADD COLUMN created_at TEXT NOT NULL DEFAULT ''; ")
+        if "meta_json" not in cols:
+            con.execute("ALTER TABLE video_outputs ADD COLUMN meta_json TEXT NOT NULL DEFAULT '{}';")
+
+        try:
+            con.execute("CREATE INDEX IF NOT EXISTS idx_video_outputs_day_lang ON video_outputs(day, language);")
         except Exception:
             pass
 

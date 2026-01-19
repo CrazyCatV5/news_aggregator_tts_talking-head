@@ -148,7 +148,7 @@ class EastRussiaSource(HtmlSource):
         return out
 
 
-    def fetch_items(self, limit_per_html_source: int = 20):
+    def fetch_items(self, limit_per_html_source: int = 500):
         """Fetch and clean EastRussia articles.
 
         EastRussia pages embed large navigation blocks ("Картина дня", "Новости по теме",

@@ -35,6 +35,7 @@
     <button class="tab-btn" data-tab="llm" type="button">LLM Digest</button>
     <button class="tab-btn" data-tab="digests" type="button">Daily Digests</button>
     <button class="tab-btn" data-tab="tts" type="button">TTS Audio</button>
+    <button class="tab-btn" data-tab="video" type="button">Video</button>
   </div>
 
   <section id="tab-dashboard" class="tab-section">
@@ -168,7 +169,6 @@
     <div class="card">
       <h3 style="margin:0 0 10px 0">Catalog</h3>
       <div class="small">Поиск по тексту, времени публикации, источнику и тегам biz/dfo.</div>
-
       <div class="grid-2" style="margin-top:10px">
         <div>
           <label class="small" for="catQuery">Text</label>
@@ -177,21 +177,6 @@
         <div>
           <label class="small" for="catSource">Source</label>
           <select id="catSource"></select>
-        </div>
-        <div>
-          <label class="small" for="catSort">Sort</label>
-          <select id="catSort">
-            <option value="">published desc</option>
-            <option value="published_asc">published asc</option>
-            <option value="source_asc">source asc</option>
-            <option value="source_desc">source desc</option>
-          </select>
-        </div>
-        <div>
-          <label class="small" for="catExcludeWar">Exclude war</label>
-          <div>
-            <input id="catExcludeWar" type="checkbox"/>
-          </div>
         </div>
         <div>
           <label class="small" for="catPublishedFrom">Published from</label>
@@ -210,7 +195,7 @@
           <input id="catDfoMin" type="number" min="0" max="1" step="0.01" placeholder="0"/>
         </div>
       </div>
-
+      <!-- ONE (and only one) set of controls for sort/exclude-war -->
       <div class="row" style="margin-top:10px; align-items:center; gap:12px">
         <label class="small" style="display:flex; gap:8px; align-items:center">
           <input id="catHasCompany" type="checkbox"/>
@@ -223,10 +208,10 @@
         <label class="small" style="display:flex; gap:8px; align-items:center">
           sort
           <select id="catSort" style="width:180px">
-            <option value="published_desc">by time</option>
+            <option value="">by time</option>
+            <option value="published_asc">oldest first</option>
             <option value="source_asc">by source (A→Z)</option>
             <option value="source_desc">by source (Z→A)</option>
-            <option value="published_asc">oldest first</option>
           </select>
         </label>
         <div class="grow"></div>
@@ -379,7 +364,7 @@
 
       <label class="mono" style="display:flex;align-items:center;gap:8px;">
         voice
-        <input id="ttsVoice" type="text" value="ref" style="width:140px" />
+        <input id="ttsVoice" type="text" value="" style="width:140px" />
       </label>
 
       <label class="mono" style="display:flex;align-items:center;gap:8px;">
@@ -411,6 +396,54 @@
     </div>
 
     <div class="mono muted" id="ttsMeta" style="margin-top:10px; white-space:pre-wrap"></div>
+  </div>
+</section>
+
+<section id="tab-video" class="tab-section hidden">
+  <div class="card">
+    <div class="row" style="align-items:center">
+      <div class="grow">
+        <div class="muted">
+          Генерация видео "talking head" через SadTalker. Видео хранится в <span class="mono">/data/video</span> и доступно по ссылке загрузки.
+        </div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px; gap:10px; align-items:center; flex-wrap:wrap">
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        day
+        <input id="videoDay" type="date" />
+      </label>
+
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        language
+        <input id="videoLang" type="text" value="ru" style="width:120px" />
+      </label>
+
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        image (optional)
+        <input id="videoImage" type="text" placeholder="images/talking_head/default.png" style="width:340px" />
+      </label>
+
+      <label class="mono" style="display:flex;align-items:center;gap:8px;">
+        <input id="videoForceTts" type="checkbox" />
+        force tts
+      </label>
+
+      <button id="videoCheckBtn" class="btn" type="button">Check</button>
+      <button id="videoRenderBtn" class="btn" type="button">Render video</button>
+      <div class="grow"></div>
+      <a id="videoDownload" class="mono" href="#" target="_blank" rel="noopener" style="display:none">Download MP4</a>
+    </div>
+
+    <div class="row" style="margin-top:10px; gap:10px; flex-wrap:wrap">
+      <div class="mono"><b>Status:</b> <span id="videoStatus">—</span></div>
+      <div class="mono"><b>File:</b> <span id="videoFile">—</span></div>
+      <div class="mono"><b>Image:</b> <span id="videoImageOut">—</span></div>
+      <div class="mono"><b>Audio:</b> <span id="videoAudioOut">—</span></div>
+    </div>
+
+    <div class="mono muted" id="videoMeta" style="margin-top:10px; white-space:pre-wrap"></div>
   </div>
 </section>
 <script defer src="/static/js/app.js"></script>

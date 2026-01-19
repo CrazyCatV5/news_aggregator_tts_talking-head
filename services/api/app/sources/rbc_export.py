@@ -5,5 +5,5 @@ from .base import SourceConfig, RssSource
 PARSER = RssSource(SourceConfig(
     name='RBC Export',
     kind='rss',
-    url='https://rssexport.rbc.ru/rbcnews/news/',
+    url='https://rssexport.rbc.ru/rbcnews/news/30/full.rss',
 ))

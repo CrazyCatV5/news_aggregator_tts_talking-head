@@ -27,10 +27,12 @@ from .ingest import ingest_job_init
 from .sources import list_source_names, queue_key_for_source
 from .ui import router as ui_router
 from .tts_api import router as tts_router
+from .video_api import router as video_router
 
 app = FastAPI(title="DFO Business News Aggregator", version="3.0.0")
 app.include_router(ui_router)
 app.include_router(tts_router)
+app.include_router(video_router)
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +49,7 @@ def health():
     return {"ok": True}
 
 @app.post("/ingest/run")
-def ingest(limit_per_html_source: int = Query(20, ge=1, le=200)):
+def ingest(limit_per_html_source: int = Query(500, ge=1, le=1000)):
     """Create a job and enqueue one task per source into its dedicated queue."""
     job_id = new_job_id()
     ingest_job_init(job_id)

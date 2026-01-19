@@ -12,7 +12,7 @@ from .jobs import init_sources, update_source, push_error, set_job, incr_job, fi
 from .sources import get_parser, list_source_names
 
 
-def ingest_source(job_id: str, source_name: str, limit_per_html_source: int = 200) -> Dict[str, Any]:
+def ingest_source(job_id: str, source_name: str, limit_per_html_source: int = 1000) -> Dict[str, Any]:
     """Ingest exactly one source.
 
     This is designed to be executed by a per-source queue/worker so that:

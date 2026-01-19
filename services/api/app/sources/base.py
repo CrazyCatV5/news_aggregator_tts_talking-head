@@ -23,7 +23,7 @@ class SourceParser:
 
 
 class RssSource(SourceParser):
-    def fetch_items(self, limit_per_html_source: int = 20) -> List[Dict[str, Any]]:
+    def fetch_items(self, limit_per_html_source: int = 500) -> List[Dict[str, Any]]:
         """Fetch RSS entries and *enrich* them by downloading the article pages.
 
         We keep RSS as the listing source (stable link + basic metadata), but we prefer
@@ -90,7 +90,7 @@ class HtmlSource(SourceParser):
         # Default behavior (simple HTML index parse)
         return fetch_html_index(self.config.url, limit_links=limit_links)
 
-    def fetch_items(self, limit_per_html_source: int = 20) -> List[Dict[str, Any]]:
+    def fetch_items(self, limit_per_html_source: int = 500) -> List[Dict[str, Any]]:
         links = self.fetch_index(limit_links=limit_per_html_source)
         out: List[Dict[str, Any]] = []
         if not links:

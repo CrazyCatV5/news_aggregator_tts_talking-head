@@ -24,14 +24,17 @@
     var llm = el('tab-llm');
     var dig = el('tab-digests');
     var tts = el('tab-tts');
+    var vid = el('tab-video');
     if(dash) dash.classList.toggle('hidden', name !== 'dashboard');
     if(cat) cat.classList.toggle('hidden', name !== 'catalog');
     if(llm) llm.classList.toggle('hidden', name !== 'llm');
     if(dig) dig.classList.toggle('hidden', name !== 'digests');
     if(tts) tts.classList.toggle('hidden', name !== 'tts');
+    if(vid) vid.classList.toggle('hidden', name !== 'video');
     if(name === 'llm'){ try{ loadLlmItems(); }catch(e){} }
     if(name === 'digests'){ try{ initDigestsTab(true); }catch(e){} }
     if(name === 'tts'){ try{ initTtsTab(true); }catch(e){} }
+    if(name === 'video'){ try{ initVideoTab(true); }catch(e){} }
     var btns = document.querySelectorAll('.tab-btn');
     for(var i=0;i<btns.length;i++){
       btns[i].classList.toggle('active', (btns[i].dataset && btns[i].dataset.tab) === name);
@@ -422,7 +425,7 @@
       if(el('catSource')) el('catSource').value = '';
       if(el('catHasCompany')) el('catHasCompany').checked = false;
       if(el('catExcludeWar')) el('catExcludeWar').checked = false;
-      if(el('catSort')) el('catSort').value = 'published_desc';
+      if(el('catSort')) el('catSort').value = '';
       loadCatalog(true);
     });
 
@@ -582,7 +585,7 @@
     var btn = el('run');
     if(btn) btn.disabled = true;
 
-    fetch(apiUrl('/ingest/run?limit_per_html_source=20'), {method:'POST'})
+    fetch(apiUrl('/ingest/run?limit_per_html_source=500'), {method:'POST'})
       .then(function(r){ return r.json(); })
       .then(function(d){
         currentJob = d.job_id;
@@ -1116,6 +1119,7 @@ function initDigestsTab(autoLoad){
   window.setTab = setTab;
 })();// ---------------- TTS (Daily Digest Audio) ----------------
 var ttsInited = false;
+  var videoInited = false;
 
 function ttsSetStatus(s){
   var st = el('ttsStatus'); if(st) st.textContent = s || '—';
@@ -1241,3 +1245,116 @@ function initTtsTab(setDefaults){
   try{ ttsCheck(); }catch(e){}
 }
 
+
+// ---------------- Video (SadTalker Talking Head) ----------------
+var videoInited = false;
+
+function videoGetDay(){
+  var d = el('videoDay');
+  return d ? (d.value || '').trim() : '';
+}
+function videoGetLang(){
+  var l = el('videoLang');
+  return l ? (l.value || 'ru').trim() : 'ru';
+}
+function videoGetImage(){
+  var i = el('videoImage');
+  return i ? (i.value || '').trim() : '';
+}
+function videoGetForceTts(){
+  var c = el('videoForceTts');
+  return !!(c && c.checked);
+}
+
+function videoSetStatus(s){
+  var x = el('videoStatus');
+  if(x) x.textContent = s || '—';
+}
+
+function videoApplyResult(data){
+  data = data || {};
+  var exists = !!data.exists || !!data.file_name;
+  var file = data.file_name || '—';
+  var img = data.image_path || data.image || '—';
+  var aud = data.audio_file_name || '—';
+
+  if(exists){
+    videoSetStatus('ok');
+  } else {
+    videoSetStatus('no video');
+  }
+
+  var vf = el('videoFile'); if(vf) vf.textContent = file;
+  var vi = el('videoImageOut'); if(vi) vi.textContent = img;
+  var va = el('videoAudioOut'); if(va) va.textContent = aud;
+
+  var a = el('videoDownload');
+  if(a && data.download_url){
+    a.href = apiUrl(data.download_url);
+    a.style.display = '';
+  } else if(a){
+    a.href = '#';
+    a.style.display = 'none';
+  }
+
+  var meta = el('videoMeta');
+  if(meta){
+    var txt = JSON.stringify(data, null, 2);
+    meta.textContent = txt;
+  }
+}
+
+async function videoCheck(){
+  var day = videoGetDay();
+  if(!day){ videoSetStatus('no day'); return; }
+  var lang = encodeURIComponent(videoGetLang());
+  videoSetStatus('loading...');
+  try{
+    var data = await apiGet('/video/daily/' + encodeURIComponent(day) + '?language=' + lang);
+    videoApplyResult(data);
+  }catch(e){
+    videoSetStatus('error');
+    log('Video check error: ' + (e && e.message ? e.message : e));
+  }
+}
+
+async function videoRender(){
+  var day = videoGetDay();
+  if(!day){ videoSetStatus('no day'); return; }
+  var lang = encodeURIComponent(videoGetLang());
+  var force = videoGetForceTts();
+  var img = videoGetImage();
+  var qs = '?language=' + lang + (force ? '&force_tts=true' : '');
+  if(img){
+    qs += '&image=' + encodeURIComponent(img);
+  }
+  videoSetStatus('rendering...');
+  try{
+    var data = await apiPost('/video/daily/' + encodeURIComponent(day) + '/render' + qs, {});
+    videoApplyResult(data);
+  }catch(e){
+    videoSetStatus('error');
+    log('Video render error: ' + (e && e.message ? e.message : e));
+  }
+}
+
+function initVideoTab(setDefaults){
+  if(!videoInited){
+    var b1 = el('videoCheckBtn'); if(b1) b1.addEventListener('click', function(){ videoCheck(); });
+    var b2 = el('videoRenderBtn'); if(b2) b2.addEventListener('click', function(){ videoRender(); });
+    videoInited = true;
+  }
+  if(setDefaults){
+    var d = el('videoDay');
+    if(d && !d.value){
+      try{
+        var now = new Date();
+        var yyyy = now.getFullYear();
+        var mm = String(now.getMonth()+1).padStart(2,'0');
+        var dd = String(now.getDate()).padStart(2,'0');
+        d.value = yyyy + '-' + mm + '-' + dd;
+      }catch(e){}
+    }
+  }
+  try{ videoCheck(); }catch(e){}
+}

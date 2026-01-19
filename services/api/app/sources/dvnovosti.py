@@ -34,7 +34,7 @@ class DVNovostiRssBusiness(RssSource):
     # dropping obvious non-business noise.
     BIZ_MIN_SCORE = 1
 
-    def fetch_items(self, limit_per_html_source: int = 20) -> List[Dict[str, Any]]:
+    def fetch_items(self, limit_per_html_source: int = 500) -> List[Dict[str, Any]]:
         # First, get enriched items via the base implementation.
         items = super().fetch_items(limit_per_html_source=limit_per_html_source)
         if not items:

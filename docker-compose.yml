@@ -20,13 +20,13 @@ services:
             - driver: nvidia
               count: all
               capabilities: ["gpu"]
+
   ollama-init:
     image: ollama/ollama:latest
     volumes:
       - ollama:/root/.ollama
       - ./scripts/ollama_init.sh:/ollama_init.sh:ro
     environment:
-      # ~4–6GB class model (good RU quality, cheaper VRAM)
       LLM_MODEL: qwen3:8b
     entrypoint: ["/bin/sh", "/ollama_init.sh"]
     restart: "no"
@@ -38,7 +38,6 @@ services:
     environment:
       OLLAMA_URL: http://ollama:11434
       LLM_MODEL: qwen3:8b
-      # Keep context moderate; long articles are chunked in llm service
       LLM_NUM_CTX: "16384"
       LLM_TIMEOUT: "360"
     depends_on: [ollama, ollama-init]
@@ -48,12 +47,10 @@ services:
     build: ./services/tts
     ports: ["8101:8101"]
     environment:
-      # Non-interactive ToS acceptance for model download. Set to 0 to require interactive consent.
       COQUI_TOS_ACCEPTED: "1"
-      # Keep model cache on the shared volume
       TTS_HOME: /data/tts-cache
     volumes:
-      - appdata:/data
+      - ./data:/data
       - ./data/voices:/data/voices:ro
       - ./tts_out:/data/tts
     restart: unless-stopped
@@ -64,6 +61,32 @@ services:
             - driver: nvidia
               count: all
               capabilities: ["gpu"]
+
+  sadtalker:
+    build:
+      context: ./sadtalker_service
+      dockerfile: Dockerfile
+    container_name: talking-head-sadtalker
+    volumes:
+      - ./data:/data
+      - ./tts_out:/data/tts
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    expose: ["8102"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: ["gpu"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8102/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   api:
     build: ./services/api
@@ -81,9 +104,12 @@ services:
       TTS_SERVICE_URL: http://tts:8101
       TTS_REF_WAV: /data/voices/ref_clean_g.wav
       TTS_OUT_DIR: /data/tts
+      SADTALKER_SERVICE_URL: http://sadtalker:8102
+      VIDEO_OUT_DIR: /data/video
+      VIDEO_DEFAULT_IMAGE: /data/images/talking_head/default.png
     volumes:
       - ./sources.json:/app/sources.json:ro
-      - appdata:/data
+      - ./data:/data
       - ./data/voices:/data/voices:ro
       - ./tts_out:/data/tts
     depends_on: [redis, llm, tts]
@@ -103,7 +129,7 @@ services:
       DB_COMMIT_EVERY: "25"
     volumes:
       - ./sources.json:/app/sources.json:ro
-      - appdata:/data
+      - ./data:/data
     depends_on: [redis]
     restart: unless-stopped
 
@@ -118,10 +144,20 @@ services:
       LLM_PROMPT_VERSION: v1.0
       LLM_TIMEOUT: "240"
     volumes:
-      - appdata:/data
+      - ./data:/data
     depends_on: [redis, llm]
     restart: unless-stopped
-
+  tg_bot:
+    build: ./tg_bot
+    environment:
+      TG_API_ID: ${TG_API_ID:-}
+      TG_API_HASH: ${TG_API_HASH:-}
+      TG_BOT_TOKEN: ${TG_BOT_TOKEN:-}
+      TG_ALLOWED_USER_IDS: ${TG_ALLOWED_USER_IDS:-}
+      API_BASE_URL: ${API_BASE_URL:-http://api:8088}
+      DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE:-ru}
+      TZ: ${TZ:-Europe/Riga}
+    depends_on: [api]
+    restart: unless-stopped
 volumes:
-  appdata:
   ollama:
