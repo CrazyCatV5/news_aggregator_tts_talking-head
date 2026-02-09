@@ -36,6 +36,7 @@
     <button class="tab-btn" data-tab="digests" type="button">Daily Digests</button>
     <button class="tab-btn" data-tab="tts" type="button">TTS Audio</button>
     <button class="tab-btn" data-tab="video" type="button">Video</button>
+    <button class="tab-btn" data-tab="automation" type="button">Automation</button>
   </div>
 
   <section id="tab-dashboard" class="tab-section">
@@ -263,6 +264,59 @@
     <div id="llmList" class="list"></div>
   </div>
 </section>
+
+  <section id="tab-automation" class="tab-section hidden">
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <div class="grow">
+          <h3 style="margin:0">Automation</h3>
+          <div class="small">Планировщик запускает: ingest (раз в час), LLM enqueue (раз в несколько часов), daily assets (раз в день). Здесь — мониторинг и force-запуски.</div>
+        </div>
+        <button id="autoRefresh" class="ghost" type="button">Refresh</button>
+      </div>
+      <div class="row" style="margin-top:10px; gap:10px; flex-wrap:wrap">
+        <button id="autoRunFull" type="button">Run full</button>
+        <button id="autoRunIngest" type="button" class="ghost">Run ingest</button>
+        <button id="autoRunLlm" type="button" class="ghost">Run LLM</button>
+        <button id="autoRunDaily" type="button" class="ghost">Run daily</button>
+        <div class="mono" style="margin-left:auto">
+          day <input id="autoDay" type="text" placeholder="YYYY-MM-DD" style="width:140px"/>
+        </div>
+      </div>
+      <div class="mono" style="margin-top:10px">
+        <div><b>Running:</b> <span id="autoRunning">—</span></div>
+        <div><b>Updated:</b> <span id="autoUpdated">—</span></div>
+        <div><b>Last OK:</b> <span id="autoLastOk">—</span></div>
+        <div><b>Last FAILED:</b> <span id="autoLastFail">—</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <div class="grow">
+          <h3 style="margin:0">Runs</h3>
+          <div class="small">Выбери run для просмотра шагов и лога.</div>
+        </div>
+        <div class="mono">run id <input id="autoRunId" type="text" placeholder="<run_id>" style="width:280px"/></div>
+        <button id="autoOpen" type="button">Open</button>
+      </div>
+      <div style="overflow:auto;margin-top:10px">
+        <table>
+          <thead>
+            <tr><th>Run ID</th><th>Pipeline</th><th>Status</th><th>Day</th><th>Started</th><th>Finished</th></tr>
+          </thead>
+          <tbody id="autoRunsTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Selected run</h3>
+      <div class="mono" id="autoRunMeta">—</div>
+      <h4 style="margin:12px 0 6px 0">Log</h4>
+      <div class="mono" id="autoRunLog" style="white-space:pre-wrap; max-height:420px; overflow:auto; border:1px solid #eee; padding:10px; border-radius:10px"></div>
+    </div>
+  </section>
 
 
 <section id="tab-digests" class="tab-section hidden">

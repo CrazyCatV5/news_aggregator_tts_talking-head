@@ -25,16 +25,19 @@
     var dig = el('tab-digests');
     var tts = el('tab-tts');
     var vid = el('tab-video');
+    var aut = el('tab-automation');
     if(dash) dash.classList.toggle('hidden', name !== 'dashboard');
     if(cat) cat.classList.toggle('hidden', name !== 'catalog');
     if(llm) llm.classList.toggle('hidden', name !== 'llm');
     if(dig) dig.classList.toggle('hidden', name !== 'digests');
     if(tts) tts.classList.toggle('hidden', name !== 'tts');
     if(vid) vid.classList.toggle('hidden', name !== 'video');
+    if(aut) aut.classList.toggle('hidden', name !== 'automation');
     if(name === 'llm'){ try{ loadLlmItems(); }catch(e){} }
     if(name === 'digests'){ try{ initDigestsTab(true); }catch(e){} }
     if(name === 'tts'){ try{ initTtsTab(true); }catch(e){} }
     if(name === 'video'){ try{ initVideoTab(true); }catch(e){} }
+    if(name === 'automation'){ try{ initAutomationTab(true); }catch(e){} }
     var btns = document.querySelectorAll('.tab-btn');
     for(var i=0;i<btns.length;i++){
       btns[i].classList.toggle('active', (btns[i].dataset && btns[i].dataset.tab) === name);
@@ -1357,4 +1360,118 @@ function initVideoTab(setDefaults){
     }
   }
   try{ videoCheck(); }catch(e){}
+}
+
+// ---------------- Automation (Scheduler + Force runs) ----------------
+var autoInited = false;
+var autoSelectedRun = '';
+
+function autoSetState(st){
+  st = st || {};
+  var running = (st.running_run_id && String(st.running_run_id).trim()) ? (st.running_run_id + ' (' + (st.running_pipeline||'') + ')') : '—';
+  if(el('autoRunning')) el('autoRunning').textContent = running;
+  if(el('autoUpdated')) el('autoUpdated').textContent = st.updated_at || '—';
+  if(el('autoLastOk')) el('autoLastOk').textContent = (st.last_ok_run_id ? (st.last_ok_run_id + ' @ ' + (st.last_ok_at||'')) : '—');
+  if(el('autoLastFail')) el('autoLastFail').textContent = (st.last_failed_run_id ? (st.last_failed_run_id + ' @ ' + (st.last_failed_at||'')) : '—');
+}
+
+function autoRenderRunsTable(runRows){
+  var tbody = el('autoRunsTbody');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  runRows = runRows || [];
+  for(var i=0;i<runRows.length;i++){
+    var r = runRows[i] || {};
+    var tr = document.createElement('tr');
+    var rid = r.run_id || '';
+    var st = r.status || '—';
+    var cls = (st === 'done') ? 'ok' : ((st === 'failed') ? 'err' : '');
+    tr.innerHTML =
+      '<td class="mono"><a href="#" data-run="' + rid + '">' + rid + '</a></td>' +
+      '<td class="mono">' + (r.pipeline||'—') + '</td>' +
+      '<td class="state ' + cls + '">' + st + '</td>' +
+      '<td class="mono">' + (r.day||'—') + '</td>' +
+      '<td class="mono">' + (r.started_at||r.created_at||'—') + '</td>' +
+      '<td class="mono">' + (r.finished_at||'—') + '</td>';
+    tbody.appendChild(tr);
+  }
+  var links = tbody.querySelectorAll('a[data-run]');
+  for(var k=0;k<links.length;k++){
+    links[k].addEventListener('click', function(ev){
+      ev.preventDefault();
+      var rid = this.getAttribute('data-run');
+      if(el('autoRunId')) el('autoRunId').value = rid;
+      autoOpenRun(rid);
+    });
+  }
+}
+
+async function autoRefresh(){
+  try{
+    var st = await apiGet('/auto/state');
+    autoSetState((st || {}).state || {});
+  }catch(e){ log('auto state error: ' + (e && e.message ? e.message : e)); }
+
+  try{
+    var rs = await apiGet('/auto/runs?limit=30&offset=0');
+    var ids = (rs || {}).items || [];
+    var rows = [];
+    for(var i=0;i<ids.length;i++){
+      try{
+        var det = await apiGet('/auto/runs/' + encodeURIComponent(ids[i]) + '?log_limit=0');
+        if(det && det.run) rows.push(det.run);
+      }catch(e){}
+    }
+    autoRenderRunsTable(rows);
+  }catch(e){ log('auto runs error: ' + (e && e.message ? e.message : e)); }
+
+  if(autoSelectedRun){
+    try{ await autoOpenRun(autoSelectedRun); }catch(e){}
+  }
+}
+
+async function autoOpenRun(runId){
+  if(!runId) return;
+  autoSelectedRun = runId;
+  try{
+    var data = await apiGet('/auto/runs/' + encodeURIComponent(runId));
+    if(el('autoRunMeta')) el('autoRunMeta').textContent = JSON.stringify((data || {}).run || {}, null, 2);
+    if(el('autoRunLog')) el('autoRunLog').textContent = ((data || {}).log || []).join('\n');
+  }catch(e){
+    if(el('autoRunMeta')) el('autoRunMeta').textContent = 'error: ' + (e && e.message ? e.message : e);
+    if(el('autoRunLog')) el('autoRunLog').textContent = '';
+  }
+}
+
+async function autoRun(pipeline){
+  var day = (el('autoDay') && el('autoDay').value) ? el('autoDay').value.trim() : '';
+  var qs = '?pipeline=' + encodeURIComponent(pipeline || 'full');
+  if(day) qs += '&day=' + encodeURIComponent(day);
+  try{
+    var r = await apiPost('/auto/run' + qs, {});
+    if(r && r.run_id){
+      if(el('autoRunId')) el('autoRunId').value = r.run_id;
+      autoSelectedRun = r.run_id;
+      await autoOpenRun(r.run_id);
+      await autoRefresh();
+    }
+  }catch(e){
+    log('auto run error: ' + (e && e.message ? e.message : e));
+  }
+}
+
+function initAutomationTab(){
+  if(!autoInited){
+    var b = el('autoRefresh'); if(b) b.addEventListener('click', function(){ autoRefresh(); });
+    var b1 = el('autoRunFull'); if(b1) b1.addEventListener('click', function(){ autoRun('full'); });
+    var b2 = el('autoRunIngest'); if(b2) b2.addEventListener('click', function(){ autoRun('ingest'); });
+    var b3 = el('autoRunLlm'); if(b3) b3.addEventListener('click', function(){ autoRun('llm'); });
+    var b4 = el('autoRunDaily'); if(b4) b4.addEventListener('click', function(){ autoRun('daily'); });
+    var o = el('autoOpen'); if(o) o.addEventListener('click', function(){
+      var rid = (el('autoRunId') && el('autoRunId').value) ? el('autoRunId').value.trim() : '';
+      if(rid) autoOpenRun(rid);
+    });
+    autoInited = true;
+  }
+  try{ autoRefresh(); }catch(e){}
 }

@@ -28,11 +28,13 @@ from .sources import list_source_names, queue_key_for_source
 from .ui import router as ui_router
 from .tts_api import router as tts_router
 from .video_api import router as video_router
+from .automation import router as automation_router
 
 app = FastAPI(title="DFO Business News Aggregator", version="3.0.0")
 app.include_router(ui_router)
 app.include_router(tts_router)
 app.include_router(video_router)
+app.include_router(automation_router)
 
 logger = logging.getLogger(__name__)
 

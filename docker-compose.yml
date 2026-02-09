@@ -159,5 +159,17 @@ services:
       TZ: ${TZ:-Europe/Riga}
     depends_on: [api]
     restart: unless-stopped
+
+  scheduler:
+    build: ./services/scheduler
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-http://api:8088}
+      TZ: ${TZ:-Europe/Riga}
+      INGEST_EVERY_MIN: ${INGEST_EVERY_MIN:-60}
+      LLM_EVERY_MIN: ${LLM_EVERY_MIN:-180}
+      DAILY_AT: ${DAILY_AT:-08:10}
+      RUN_ON_START: ${RUN_ON_START:-0}
+    depends_on: [api]
+    restart: unless-stopped
 volumes:
   ollama:
