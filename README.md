@@ -180,7 +180,7 @@ docker compose up -d --build
 - LLM service: `http://localhost:8099`
 - TTS: `http://localhost:8101`
 - Ollama: `http://localhost:11434`
-- UI: `http://localhost:8088/` (UI отдаётся API)
+- UI: `http://localhost:8088/ui#` (UI отдаётся API)
 
 ---
 
